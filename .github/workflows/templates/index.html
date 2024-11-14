@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учёт посещаемости</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: auto; }
+        h2 { color: #333; }
+        form { margin-bottom: 20px; }
+        .container { padding: 10px; background-color: #f9f9f9; margin: 10px 0; }
+        label { display: block; margin-top: 5px; }
+        input[type="text"], select { width: 100%; padding: 5px; margin: 5px 0; }
+        button { padding: 8px 12px; color: white; background-color: #4CAF50; border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+
+<h2>Учёт посещаемости студентов</h2>
+
+<div class="container">
+    <form action="/add_student" method="post">
+        <label>Имя студента:</label>
+        <input type="text" name="name" required>
+        <button type="submit">Добавить студента</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr><th>Студент</th><th>Действия</th></tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>{{ student[1] }}</td>
+                <td>
+                    <form action="/edit_student/{{ student[0] }}" method="post" style="display:inline;">
+                        <input type="text" name="new_name" placeholder="Новое имя">
+                        <button type="submit">Изменить</button>
+                    </form>
+                    <form action="/delete_student/{{ student[0] }}" method="post" style="display:inline;">
+                        <button type="submit">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <form action="/mark_absent" method="post">
+        <label>Выберите студента:</label>
+        <select name="student_id" required>
+            {% for student in students %}
+            <option value="{{ student[0] }}">{{ student[1] }}</option>
+            {% endfor %}
+        </select>
+        <label>Дата:</label>
+        <select name="date" required>
+            {% for date in date_options %}
+            <option value="{{ date }}">{{ date }}</option>
+            {% endfor %}
+        </select>
+        <label>Пропущено часов:</label>
+        <input type="text" name="hours" required>
+        <label>Причина:</label>
+        <input type="text" name="reason">
+        <button type="submit">Отметить отсутствие</button>
+    </form>
+</div>
+
+<div class="container">
+    <h3>Отметки посещаемости</h3>
+    <ul>
+        {% for record in attendance_records %}
+        <li>{{ record[0] }} - {{ record[1] }} - Пропущено: {{ record[2] }} час(ов), Причина: {{ record[3] }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<form action="/export_csv" method="get">
+    <button type="submit">Экспортировать в CSV</button>
+</form>
+
+</body>
+</html>
