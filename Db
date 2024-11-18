@@ -1,0 +1,73 @@
+import android.content.ContentValues
+import android.content.Context
+import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+
+    companion object {
+        private const val DATABASE_NAME = "attendance.db"
+        private const val DATABASE_VERSION = 1
+    }
+
+    override fun onCreate(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS group_leaders (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS students (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, student_id INTEGER NOT NULL, date TEXT NOT NULL, missed_hours INTEGER, reason TEXT, FOREIGN KEY (student_id) REFERENCES students(id))")
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DROP TABLE IF EXISTS group_leaders")
+        db.execSQL("DROP TABLE IF EXISTS students")
+        db.execSQL("DROP TABLE IF EXISTS attendance")
+        onCreate(db)
+    }
+
+    fun registerGroupLeader(username: String, password: String) {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put("username", username)
+            put("password", password)
+        }
+        
+        db.insert("group_leaders", null, values)
+    }
+
+    fun addStudent(name: String) {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put("name", name)
+        }
+        
+        db.insert("students", null, values)
+    }
+
+    fun markAbsent(studentId: Int, date: String, missedHours: Int, reason: String) {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put("student_id", studentId)
+            put("date", date)
+            put("missed_hours", missedHours)
+            put("reason", reason)
+        }
+        
+        db.insert("attendance", null, values)
+    }
+
+    fun getAttendanceRecords(): Cursor {
+        val db = readableDatabase
+        
+        return db.rawQuery(
+            "SELECT students.name AS student_name, attendance.date, attendance.missed_hours, attendance.reason " +
+            "FROM attendance JOIN students ON attendance.student_id = students.id",
+            null
+        )
+    }
+
+    fun getAllStudents(): Cursor {
+        val db = readableDatabase
+        
+        return db.rawQuery("SELECT * FROM students", null)
+    }
+}
