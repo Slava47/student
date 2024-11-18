@@ -1,0 +1,136 @@
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import android.database.Cursor
+import android.os.Bundle
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Toast
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var dbHelper: DatabaseHelper
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        dbHelper = DatabaseHelper(this)
+
+        val registerButton = findViewById<Button>(R.id.registerButton)
+        registerButton.setOnClickListener { registerGroupLeader() }
+
+        val addStudentButton = findViewById<Button>(R.id.addStudentButton)
+        addStudentButton.setOnClickListener { addStudent() }
+
+        val markAttendanceButton = findViewById<Button>(R.id.markAttendanceButton)
+        markAttendanceButton.setOnClickListener { markAttendance() }
+
+        val viewAttendanceButton = findViewById<Button>(R.id.viewAttendanceButton)
+        viewAttendanceButton.setOnClickListener { viewAttendance() }
+    }
+
+    private fun registerGroupLeader() {
+       val usernameEditText = findViewById<EditText>(R.id.usernameEditText)
+       val passwordEditText = findViewById<EditText>(R.id.passwordEditText)
+
+       val username = usernameEditText.text.toString().trim()
+       val password = passwordEditText.text.toString().trim()
+
+       if (username.isEmpty() || password.isEmpty()) {
+           Toast.makeText(this, "Пожалуйста, заполните все поля!", Toast.LENGTH_SHORT).show()
+           return
+       }
+
+       try {
+           dbHelper.registerGroupLeader(username, password)
+           Toast.makeText(this, "Регистрация успешна!", Toast.LENGTH_SHORT).show()
+           usernameEditText.text.clear()
+           passwordEditText.text.clear()
+       } catch (e: Exception) {
+           Toast.makeText(this, "Ошибка регистрации! Возможно пользователь уже существует.", Toast.LENGTH_SHORT).show()
+           e.printStackTrace()
+       }
+   }
+
+   private fun addStudent() {
+       val studentNameEditText = EditText(this).apply { hint = "Имя студента" }
+
+       AlertDialog.Builder(this)
+           .setTitle("Добавить студента")
+           .setView(studentNameEditText)
+           .setPositiveButton("Добавить") { _, _ ->
+               val studentName = studentNameEditText.text.toString().trim()
+               if (studentName.isNotEmpty()) {
+                   dbHelper.addStudent(studentName)
+                   Toast.makeText(this, "Студент добавлен!", Toast.LENGTH_SHORT).show()
+               } else {
+                   Toast.makeText(this, "Введите имя студента!", Toast.LENGTH_SHORT).show()
+               }
+           }
+           .setNegativeButton("Отмена", null)
+           .show()
+   }
+
+   private fun markAttendance() {
+       val studentIdEditText = EditText(this).apply { hint = "ID студента" }
+       val dateEditText = EditText(this).apply { hint = "Дата (YYYY-MM-DD)" }
+       val hoursEditText = EditText(this).apply { hint = "Пропущено часов" }
+       val reasonEditText = EditText(this).apply { hint = "Причина" }
+
+       val layout = LinearLayout(this).apply {
+           orientation = LinearLayout.VERTICAL
+           addView(studentIdEditText)
+           addView(dateEditText)
+           addView(hoursEditText)
+           addView(reasonEditText)
+       }
+
+       AlertDialog.Builder(this)
+           .setTitle("Отметить посещаемость")
+           .setView(layout)
+           .setPositiveButton("Отметить") { _, _ ->
+               try {
+                   val studentId = studentIdEditText.text.toString().toInt()
+                   val date = dateEditText.text.toString().trim()
+                   val missedHours = hoursEditText.text.toString().toInt()
+                   val reason = reasonEditText.text.toString().trim()
+
+                   if (date.isNotEmpty() && missedHours >= 0) {
+                       dbHelper.markAbsent(studentId, date, missedHours, reason)
+                       Toast.makeText(this, "Посещение отмечено!", Toast.LENGTH_SHORT).show()
+                   } else {
+                       Toast.makeText(this, "Введите корректные данные!", Toast.LENGTH_SHORT).show()
+                   }
+               } catch (e: NumberFormatException) {
+                   Toast.makeText(this, "Ошибка ввода! Проверьте ID студента и количество часов.", Toast.LENGTH_SHORT).show()
+               }
+           }
+           .setNegativeButton("Отмена", null)
+           .show()
+   }
+
+   private fun viewAttendance() {
+       val cursor: Cursor = dbHelper.getAttendanceRecords()
+
+       val recordsBuilder = StringBuilder()
+
+       while (cursor.moveToNext()) {
+           val studentName = cursor.getString(cursor.getColumnIndex("student_name"))
+           val date = cursor.getString(cursor.getColumnIndex("date"))
+           val missedHours = cursor.getInt(cursor.getColumnIndex("missed_hours"))
+           val reason = cursor.getString(cursor.getColumnIndex("reason"))
+
+           recordsBuilder.append("$studentName: $date, Пропущено часов: $missedHours, Причина: $reason\n")
+       }
+
+       cursor.close()
+
+       AlertDialog.Builder(this)
+           .setTitle("Записи посещаемости")
+           .setMessage(recordsBuilder.toString())
+           .setPositiveButton("Закрыть", null)
+           .show()
+   }
+}
